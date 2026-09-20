@@ -159,23 +159,24 @@ public final class ConfigurationScreen {
 
     appearance.addEntry(
         entryBuilder
+            .startBooleanToggle(
+                Component.translatable("text.config.advancements_reloaded.option.criterias_translation_mode"),
+                Configuration.criteriasTranslationMode)
+            .setDefaultValue(false)
+            .setTooltip(
+                Component.translatable("text.config.advancements_reloaded.option.criterias_translation_mode.tooltip"))
+            .setSaveConsumer(newValue -> Configuration.criteriasTranslationMode = newValue)
+            .build());
+
+    appearance.addEntry(
+        entryBuilder
             .startEnumSelector(Component.translatable("text.config.advancements_reloaded.option.background_style"),
                 Configuration.BackgroundStyle.class, Configuration.backgroundStyle)
             .setDefaultValue(Configuration.BackgroundStyle.TRANSPARENT)
             .setTooltip(
                 Component.translatable("text.config.advancements_reloaded.option.background_style.tooltip"))
             .setSaveConsumer(newValue -> Configuration.backgroundStyle = newValue)
-            .build());
-
-    appearance.addEntry(
-        entryBuilder
-            .startEnumSelector(
-                Component.translatable("text.config.advancements_reloaded.option.criterias_translation_mode"),
-                Configuration.TranslationMode.class, Configuration.criteriasTranslationMode)
-            .setDefaultValue(Configuration.TranslationMode.ONLY_COMPATIBLE)
-            .setTooltip(
-                Component.translatable("text.config.advancements_reloaded.option.criterias_translation_mode.tooltip"))
-            .setSaveConsumer(newValue -> Configuration.criteriasTranslationMode = newValue)
+            .setEnumNameProvider(style -> Component.translatable("text.config.advancements_reloaded.enum.background_style." + style.name().toLowerCase()))
             .build());
   }
 

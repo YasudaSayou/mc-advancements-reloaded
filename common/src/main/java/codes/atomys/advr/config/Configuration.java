@@ -18,8 +18,8 @@ public final class Configuration {
   public static boolean displayDescription = true; // added in v0.2
   public static boolean criteriasAlphabeticOrder = true; // added in v0.3, true by default in v0.5
   public static boolean tabsAlphabeticOrder = true; // added in v0.6
+  public static boolean criteriasTranslationMode = false; // added in v0.6
   public static BackgroundStyle backgroundStyle = BackgroundStyle.TRANSPARENT; // added in v0.4
-  public static TranslationMode criteriasTranslationMode = TranslationMode.ONLY_COMPATIBLE; // added in v0.6
 
   // Advanced customization
   public static int headerHeight = 48; // added in v0.2
@@ -45,24 +45,5 @@ public final class Configuration {
     TRANSPARENT,
     ACHIEVEMENT,
     BLACK,
-  }
-
-  /**
-   * Enum representing different translation modes.
-   *
-   * <p>
-   * NONE: No translation
-   * </p>
-   * <p>
-   * ONLY_COMPATIBLE: Only translate advancements that are compatible
-   * </p>
-   * <p>
-   * ALL: Translate all advancements
-   * </p>
-   */
-  public enum TranslationMode {
-    NONE,
-    ONLY_COMPATIBLE,
-    TRY_TO_TRANSLATE,
   }
 }
