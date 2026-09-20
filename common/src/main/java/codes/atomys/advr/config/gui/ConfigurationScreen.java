@@ -1,6 +1,5 @@
 package codes.atomys.advr.config.gui;
 
-import codes.atomys.advr.AdvancementTreeRecalculator;
 import codes.atomys.advr.config.Configuration;
 import codes.atomys.advr.config.ModConfigurationFile;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
@@ -100,27 +99,12 @@ public final class ConfigurationScreen {
    * @return a ConfigBuilder with various configuration settings.
    */
   public static ConfigBuilder configBuilder(final Screen parent) {
-    // Store the original ordering settings to detect changes
-    final Configuration.AdvancementOrder originalAdvancementsOrder = Configuration.advancementsOrder;
-    final java.util.List<String> originalCustomAdvancementsOrder =
-        new java.util.ArrayList<>(Configuration.customAdvancementsOrder);
 
     final ConfigBuilder builder = ConfigBuilder.create()
         .setParentScreen(parent)
         .setTransparentBackground(true)
         .setTitle(Component.translatable("text.config.advancements_reloaded.title"))
-        .setSavingRunnable(() -> {
-          // Save configuration to file
-          ModConfigurationFile.saveRunnable.run();
-
-          // Recalculate tree positions if advancement ordering changed
-          final boolean orderModeChanged = originalAdvancementsOrder != Configuration.advancementsOrder;
-          final boolean customOrderChanged = !originalCustomAdvancementsOrder.equals(Configuration.customAdvancementsOrder);
-
-          if (orderModeChanged || (customOrderChanged && Configuration.advancementsOrder == Configuration.AdvancementOrder.CONFIGURED_ORDER)) {
-            AdvancementTreeRecalculator.recalculateAll();
-          }
-        });
+        .setSavingRunnable(ModConfigurationFile.saveRunnable);
 
     createApparanceEntries(builder);
     createAdvancedCustomizationEntries(builder);
@@ -164,23 +148,13 @@ public final class ConfigurationScreen {
 
     appearance.addEntry(
         entryBuilder
-            .startEnumSelector(
-                Component.translatable("text.config.advancements_reloaded.option.advancements_order"),
-                Configuration.AdvancementOrder.class, Configuration.advancementsOrder)
-            .setDefaultValue(Configuration.AdvancementOrder.ALPHABETIC)
+            .startBooleanToggle(
+                Component.translatable("text.config.advancements_reloaded.option.tabs_alphabetic_order"),
+                Configuration.tabsAlphabeticOrder)
+            .setDefaultValue(true)
             .setTooltip(
-                Component.translatable("text.config.advancements_reloaded.option.advancements_order.tooltip"))
-            .setSaveConsumer(newValue -> Configuration.advancementsOrder = newValue)
-            .build());
-
-    appearance.addEntry(
-        entryBuilder
-            .startEnumSelector(
-                Component.translatable("text.config.advancements_reloaded.option.tabs_order"),
-                Configuration.TabOrder.class, Configuration.tabsOrder)
-            .setDefaultValue(Configuration.TabOrder.ALPHABETIC)
-            .setTooltip(Component.translatable("text.config.advancements_reloaded.option.tabs_order.tooltip"))
-            .setSaveConsumer(newValue -> Configuration.tabsOrder = newValue)
+                Component.translatable("text.config.advancements_reloaded.option.tabs_alphabetic_order.tooltip"))
+            .setSaveConsumer(newValue -> Configuration.tabsAlphabeticOrder = newValue)
             .build());
 
     appearance.addEntry(
@@ -213,7 +187,7 @@ public final class ConfigurationScreen {
     advancedCustomization.addEntry(
         entryBuilder
             .startIntSlider(Component.translatable("text.config.advancements_reloaded.option.header_height"),
-                Configuration.headerHeight, 42, 128)
+                Configuration.headerHeight, 32, 128)
             .setDefaultValue(48)
             .setTooltip(Component.translatable("text.config.advancements_reloaded.option.header_height.tooltip"))
             .setSaveConsumer(newValue -> Configuration.headerHeight = newValue)
@@ -222,8 +196,8 @@ public final class ConfigurationScreen {
     advancedCustomization.addEntry(
         entryBuilder
             .startIntSlider(Component.translatable("text.config.advancements_reloaded.option.footer_height"),
-                Configuration.footerHeight, 42, 128)
-            .setDefaultValue(48)
+                Configuration.footerHeight, 32, 128)
+            .setDefaultValue(32)
             .setTooltip(Component.translatable("text.config.advancements_reloaded.option.footer_height.tooltip"))
             .setSaveConsumer(newValue -> Configuration.footerHeight = newValue)
             .build());

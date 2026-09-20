@@ -16,14 +16,12 @@ description = '''
 Make it easier to see which advancements you have and what's missing.
 '''
 
-[[accessTransformers]]
-file = "META-INF/accesstransformer.cfg"
-
-[[mixins]]
-config = "advancements_reloaded.neoforge.mixins.json"
-
-[[mixins]]
-config = "advancements_reloaded.mixins.json"
+[[dependencies.advancements_reloaded]]
+modId = "forge"
+mandatory = true
+versionRange = "[48,)"
+ordering = "NONE"
+side = "CLIENT"
 
 [[dependencies.advancements_reloaded]]
 modId = "minecraft"

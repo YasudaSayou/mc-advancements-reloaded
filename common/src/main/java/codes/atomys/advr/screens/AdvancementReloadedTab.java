@@ -1,24 +1,21 @@
 package codes.atomys.advr.screens;
 
 import codes.atomys.advr.ReloadedDisplayInfo;
-import codes.atomys.advr.ReloadedWidgetType;
 import codes.atomys.advr.TabPlacement;
 import codes.atomys.advr.config.Configuration;
 import com.google.common.collect.Maps;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
-import net.minecraft.advancements.AdvancementType;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -36,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
  * {@link #create(Minecraft, AdvancementReloadedScreen, int, AdvancementNode)}
  * method, which initializes the tab with the given parameters. The tab's
  * position can be set using the {@link #setPos(int, int)} method, and it can be
- * rendered using the {@link #render(GuiGraphicsExtractor, int, int)} method.
+ * rendered using the {@link #render(GuiGraphics, int, int)} method.
  * </p>
  * <p>
  * The tab contains a map of widgets, each representing an advancement. These
@@ -57,16 +54,20 @@ import org.jetbrains.annotations.Nullable;
  * @see ReloadedDisplayInfo
  */
 public class AdvancementReloadedTab {
+  private static final ResourceLocation SELECTED_IDENTIFIER = ResourceLocation
+      .withDefaultNamespace("advancements/task_frame_obtained");
+  private static final ResourceLocation UNSELECTED_IDENTIFIER = ResourceLocation
+      .withDefaultNamespace("advancements/task_frame_unobtained");
+
   private final Minecraft client;
   private final AdvancementReloadedScreen screen;
+  private final TabPlacement type;
   private final AdvancementNode root;
   private final ReloadedDisplayInfo display;
-  private final ItemStackTemplate icon;
+  private final ItemStack icon;
   private final Component title;
   private final AdvancementReloadedWidget rootWidget;
   private final Map<AdvancementHolder, AdvancementReloadedWidget> widgets = Maps.newLinkedHashMap();
-  private boolean doesAnyWidgetMatchSearch = true;
-  private TabPlacement tabPlacement;
   private int index;
   private double originX;
   private double originY;
@@ -78,7 +79,6 @@ public class AdvancementReloadedTab {
   private boolean initialized;
   private int tab_x;
   private int tab_y;
-  private final RenderPipeline renderTypeGui = RenderPipelines.GUI_TEXTURED;
 
   /**
    * Creates a new instance of the {@link AdvancementReloadedTab} class.
@@ -98,7 +98,7 @@ public class AdvancementReloadedTab {
       final TabPlacement type, final int index, final AdvancementNode root, final ReloadedDisplayInfo display) {
     this.client = client;
     this.screen = screen;
-    this.tabPlacement = type;
+    this.type = type;
     this.index = index;
     this.root = root;
     this.display = display;
@@ -118,8 +118,8 @@ public class AdvancementReloadedTab {
    *
    * @return The type of the tab.
    */
-  public TabPlacement getTabPlacement() {
-    return this.tabPlacement;
+  public TabPlacement getType() {
+    return this.type;
   }
 
   /**
@@ -135,6 +135,21 @@ public class AdvancementReloadedTab {
    */
   public int getIndex() {
     return this.index;
+  }
+
+  /**
+   * Sets the index of the tab.
+   * <p>
+   * The index is the position of the tab in the list of tabs, starting from 0.
+   * The index is used to identify the tab in the tab list, and is used by the
+   * client to determine which tab to display when the player switches between
+   * tabs.
+   * </p>
+   *
+   * @param index the new index of the tab
+   */
+  public void setIndex(final int index) {
+    this.index = index;
   }
 
   /**
@@ -164,17 +179,6 @@ public class AdvancementReloadedTab {
   }
 
   /**
-   * Gets the display name of a tab for sorting purposes.
-   *
-   * @return the display name of the tab
-   */
-  public String getDisplayName() {
-    return this.getRoot().advancement().name()
-        .orElse(Component.literal(this.getRoot().toString()))
-        .getString();
-  }
-
-  /**
    * Gets the display information of the tab.
    * <p>
    * The returned object contains the title, description, icon, and other
@@ -198,38 +202,8 @@ public class AdvancementReloadedTab {
    * @param y the y position of the tab bar
    */
   public void setPos(final int x, final int y) {
-    this.tab_x = x + this.tabPlacement.getTabX(this.index);
-    this.tab_y = y + this.tabPlacement.getTabY(this.index);
-  }
-
-  /**
-   * Sets the index of the tab.
-   * <p>
-   * The index is the position of the tab in the list of tabs, starting from 0.
-   * The index is used to identify the tab in the tab list, and is used by the
-   * client to determine which tab to display when the player switches between
-   * tabs.
-   * </p>
-   *
-   * @param index the new index of the tab
-   */
-  public void setIndex(final int index) {
-    this.index = index;
-  }
-
-  /**
-   * Sets the type of the tab.
-   * <p>
-   * The type of the tab determines the position of the tab in the GUI, and
-   * is one of the values of the {@link TabPlacement} enum. The type is used
-   * to position the tab on the screen, and to determine the number of tabs
-   * that can be displayed on the screen.
-   * </p>
-   *
-   * @param type the new type of the tab
-   */
-  public void setTabPlacement(final TabPlacement type) {
-    this.tabPlacement = type;
+    this.tab_x = x + this.type.getTabX(this.index);
+    this.tab_y = y + this.type.getTabY(this.index);
   }
 
   /**
@@ -245,28 +219,14 @@ public class AdvancementReloadedTab {
    * @param context  the graphics context to draw on
    * @param selected whether the tab is selected
    */
-  public void drawBackground(final GuiGraphicsExtractor context, final boolean selected) {
-    this.drawBackground(context, selected, 1.0F);
-  }
+  public void drawBackground(final GuiGraphics context, final boolean selected) {
+    final ResourceLocation texture = selected ? SELECTED_IDENTIFIER : UNSELECTED_IDENTIFIER;
 
-  /**
-   * Draws the background of the tab with a specified alpha value.
-   * <p>
-   * This method is similar to {@link #drawBackground(GuiGraphicsExtractor, boolean)},
-   * but it allows for a custom alpha value to be applied to the background,
-   * which can be used for fading effects or other visual enhancements.
-   * </p>
-   *
-   * @param context  the graphics context to draw on
-   * @param selected whether the tab is selected
-   * @param alpha    the alpha value to apply to the background
-   */
-  public void drawBackground(final GuiGraphicsExtractor context, final boolean selected, final float alpha) {
-    final ReloadedWidgetType type = selected ? ReloadedWidgetType.OBTAINED : ReloadedWidgetType.UNOBTAINED;
+    context.pose().pushPose();
+    context.pose().translate(0.0D, 0.0D, 220.0D);
+    context.blitSprite(texture, this.tab_x, this.tab_y, this.type.getWidth(), this.type.getHeight());
+    context.pose().popPose();
 
-    context.blitSprite(this.renderTypeGui, type.frameSprite(AdvancementType.TASK, !this.isAnyWidgetMatchSearch()),
-        this.tab_x, this.tab_y, this.tabPlacement.getWidth(),
-        this.tabPlacement.getHeight(), alpha);
   }
 
   /**
@@ -279,9 +239,12 @@ public class AdvancementReloadedTab {
    *
    * @param context the graphics context to draw on
    */
-  public void drawIcon(final GuiGraphicsExtractor context) {
-    context.fakeItem(this.icon.create(), this.tab_x + this.tabPlacement.getTopMargin(),
-        this.tab_y + this.tabPlacement.getLeftMargin());
+  public void drawIcon(final GuiGraphics context) {
+    context.pose().pushPose();
+    context.pose().translate(0.0D, 0.0D, 221.0D);
+    context.renderFakeItem(this.icon, this.tab_x + this.type.getTopMargin(),
+        this.tab_y + this.type.getLeftMargin());
+    context.pose().popPose();
   }
 
   /**
@@ -319,31 +282,6 @@ public class AdvancementReloadedTab {
   }
 
   /**
-   * Checks if any widget in the collection matches the given search query.
-   * This value is cached for performance reasons and should only be
-   * updated when the search query changes.
-   *
-   * @return {@code true} if at least one widget matches the search query,
-   *         {@code false} otherwise.
-   */
-  public boolean isAnyWidgetMatchSearch() {
-    return this.doesAnyWidgetMatchSearch;
-  }
-
-  /**
-   * Updates if any widget in the collection matches the given search query.
-   */
-  public void updateDoesWidgetMatchSearch() {
-    for (final AdvancementReloadedWidget widget : this.widgets.values()) {
-      if (widget.isSearchQueryMatched()) {
-        this.doesAnyWidgetMatchSearch = true;
-        return;
-      }
-    }
-    this.doesAnyWidgetMatchSearch = false;
-  }
-
-  /**
    * Renders the tab.
    * <p>
    * This method is called by the screen to render the tab. It first checks if
@@ -356,7 +294,7 @@ public class AdvancementReloadedTab {
    * @param x       the x position of the screen
    * @param y       the y position of the screen
    */
-  public void render(final GuiGraphicsExtractor context, final int x, final int y) {
+  public void render(final GuiGraphics context, final int x, final int y) {
     if (!this.initialized) {
       this.originX = (double) ((this.getWidth() / 2) - (this.maxPanX + this.minPanX) / 2);
       this.originY = (double) ((this.screen.height / 2 - Configuration.headerHeight - 1)
@@ -365,15 +303,15 @@ public class AdvancementReloadedTab {
     }
 
     context.enableScissor(x, y, x + this.getWidth(), y + this.getHeight());
-    context.pose().pushMatrix();
-    context.pose().translate((float) x, (float) y);
+    context.pose().pushPose();
+    context.pose().translate((float) x, (float) y, 0.0F);
     final int i = Mth.floor(this.originX);
     final int j = Mth.floor(this.originY);
 
     this.rootWidget.renderLines(context, i, j, true);
     this.rootWidget.renderLines(context, i, j, false);
     this.rootWidget.renderWidgets(context, i, j);
-    context.pose().popMatrix();
+    context.pose().popPose();
     context.disableScissor();
   }
 
@@ -396,9 +334,11 @@ public class AdvancementReloadedTab {
    * @param x       the x position of the screen
    * @param y       the y position of the screen
    */
-  public void drawWidgetTooltip(final GuiGraphicsExtractor context, final int mouseX, final int mouseY, final int x,
+  public void drawWidgetTooltip(final GuiGraphics context, final int mouseX, final int mouseY, final int x,
       final int y) {
-    context.fill(0, 0, this.getWidth(), this.getHeight(), Mth.floor(this.alpha * 255.0F) << 24);
+    context.fill(0, 0, this.getWidth(), this.getHeight(), -200, Mth.floor(this.alpha * 255.0F) << 24);
+    context.pose().pushPose();
+    context.pose().translate(0.0F, 0.0F, 300.0F);
     boolean rendered = false;
     final int i = Mth.floor(this.originX);
     final int j = Mth.floor(this.originY);
@@ -415,6 +355,7 @@ public class AdvancementReloadedTab {
       }
     }
 
+    context.pose().popPose();
     if (rendered) {
       this.alpha = Mth.clamp(this.alpha + 0.02F, 0.0F, 0.3F);
     } else {
@@ -433,8 +374,8 @@ public class AdvancementReloadedTab {
    * @return true if the mouse is on the tab, false otherwise
    */
   public boolean isClickOnTab(final int screenX, final int screenY, final double mouseX, final double mouseY) {
-    return mouseX > (double) this.tab_x && mouseX < (double) (this.tab_x + this.tabPlacement.getWidth())
-        && mouseY > (double) this.tab_y && mouseY < (double) (this.tab_y + this.tabPlacement.getHeight());
+    return mouseX > (double) this.tab_x && mouseX < (double) (this.tab_x + this.type.getWidth())
+        && mouseY > (double) this.tab_y && mouseY < (double) (this.tab_y + this.type.getHeight());
   }
 
   /**
@@ -463,8 +404,7 @@ public class AdvancementReloadedTab {
 
     while (widgets.hasNext()) {
       final AdvancementReloadedWidget advancementWidget = widgets.next();
-      if (advancementWidget.isMouseOn(flooredOriginX, flooredOriginY, mouseX, mouseY)
-          && advancementWidget.shouldRender(flooredOriginX, flooredOriginY, (int) mouseX, (int) mouseY))
+      if (advancementWidget.isMouseOn(flooredOriginX, flooredOriginY, mouseX, mouseY))
         return advancementWidget;
     }
 
@@ -550,7 +490,7 @@ public class AdvancementReloadedTab {
    */
   public void addAdvancement(final AdvancementNode advancement) {
     final Optional<DisplayInfo> optional = advancement.advancement().display();
-    if (optional.isPresent()) {
+    if (!optional.isEmpty()) {
       final AdvancementReloadedWidget advancementWidget = new AdvancementReloadedWidget(this, this.client, advancement,
           ReloadedDisplayInfo.cast(optional.get()));
       this.addWidget(advancementWidget, advancement.holder());
@@ -576,20 +516,21 @@ public class AdvancementReloadedTab {
    */
   private void addWidget(final AdvancementReloadedWidget widget, final AdvancementHolder advancement) {
     this.widgets.put(advancement, widget);
-    final int widgetXPosition = widget.getX();
-    final int widgetXPositionOffset = widgetXPosition + 28;
-    final int widgetYPosition = widget.getY();
-    final int widgetYPositionOffset = widgetYPosition + 27;
-    this.minPanX = Math.min(this.minPanX, widgetXPosition);
-    this.maxPanX = Math.max(this.maxPanX, widgetXPositionOffset);
-    this.minPanY = Math.min(this.minPanY, widgetYPosition);
-    this.maxPanY = Math.max(this.maxPanY, widgetYPositionOffset);
-    final Iterator<AdvancementReloadedWidget> widgetIterator = this.widgets.values().iterator();
+    final int i = widget.getX();
+    final int j = i + 28;
+    final int k = widget.getY();
+    final int l = k + 27;
+    this.minPanX = Math.min(this.minPanX, i);
+    this.maxPanX = Math.max(this.maxPanX, j);
+    this.minPanY = Math.min(this.minPanY, k);
+    this.maxPanY = Math.max(this.maxPanY, l);
+    final Iterator<AdvancementReloadedWidget> var7 = this.widgets.values().iterator();
 
-    while (widgetIterator.hasNext()) {
-      final AdvancementReloadedWidget advancementWidget = widgetIterator.next();
+    while (var7.hasNext()) {
+      final AdvancementReloadedWidget advancementWidget = var7.next();
       advancementWidget.addToTree();
     }
+
   }
 
   /**

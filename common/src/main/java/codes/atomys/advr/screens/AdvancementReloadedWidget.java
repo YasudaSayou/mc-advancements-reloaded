@@ -1,14 +1,10 @@
 package codes.atomys.advr.screens;
 
 import codes.atomys.advr.ReloadedCriterionProgress;
-import codes.atomys.advr.ReloadedWidgetType;
 import codes.atomys.advr.config.Configuration;
-import codes.atomys.advr.utils.TextUtils;
-import codes.atomys.advr.utils.Utils;
 import com.google.common.collect.Lists;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import net.minecraft.advancements.Advancement;
@@ -17,15 +13,15 @@ import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.advancements.AdvancementWidgetType;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
@@ -48,7 +44,7 @@ import org.jetbrains.annotations.Nullable;
  * @see DisplayInfo
  */
 public class AdvancementReloadedWidget {
-  private static final Identifier TITLE_BOX_TEXTURE = Identifier
+  private static final ResourceLocation TITLE_BOX_TEXTURE = ResourceLocation
       .withDefaultNamespace("advancements/title_box");
 
   // CHECKSTYLE:OFF
@@ -70,7 +66,6 @@ public class AdvancementReloadedWidget {
   private List<ReloadedCriterionProgress> steps;
   private final int x;
   private final int y;
-  private final RenderPipeline renderTypeGui = RenderPipelines.GUI_TEXTURED;
 
   /**
    * The constructor for the AdvancementReloadedWidget class.
@@ -215,10 +210,9 @@ public class AdvancementReloadedWidget {
       advancement = advancement.parent();
     } while (advancement != null && advancement.advancement().display().isEmpty());
 
-    if (advancement != null && advancement.advancement().display().isPresent()) {
+    if (advancement != null && !advancement.advancement().display().isEmpty()) {
       return this.tab.getWidget(advancement.holder());
     } else {
-      Utils.LOGGER.warn("advancement parent cannot be retrieved from the advancement: " + advancement);
       return null;
     }
   }
@@ -250,49 +244,7 @@ public class AdvancementReloadedWidget {
    *         criteria
    */
   public List<ReloadedCriterionProgress> getSteps() {
-    if (this.steps == null) {
-      return Collections.emptyList();
-    }
-
     return this.steps;
-  }
-
-  /**
-   * Checks if the given search string matches any part of the widget's title,
-   * description,
-   * or steps. The search is case-insensitive.
-   *
-   * @return {@code true} if the search string matches the title, any line in the
-   *         description,
-   *         or any step's human-readable criterion name; {@code false} otherwise.
-   */
-  public boolean isSearchQueryMatched() {
-    final String search = this.tab.getScreen().getSearchText();
-    if (search == null || search.isEmpty() || search.trim().isEmpty()) {
-      return true;
-    }
-
-    final String searchLower = search.toLowerCase();
-    // Pass by display getTitle getString to have the translated string
-    if (TextUtils.toString(this.display.getTitle()).toLowerCase()
-        .contains(searchLower)) {
-      return true;
-    }
-
-    for (final FormattedCharSequence line : this.description) {
-      if (TextUtils.toString(line).toLowerCase().contains(searchLower)) {
-        return true;
-      }
-    }
-
-    for (final ReloadedCriterionProgress step : this.steps) {
-      if (TextUtils.toString(step.getHumanCriterionName()).toLowerCase()
-          .contains(searchLower)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -303,7 +255,7 @@ public class AdvancementReloadedWidget {
    * @param y       the y-coordinate of the widget
    * @param border  whether to render a border around the connecting lines
    */
-  public void renderLines(final GuiGraphicsExtractor context, final int x, final int y, final boolean border) {
+  public void renderLines(final GuiGraphics context, final int x, final int y, final boolean border) {
     if (this.parent != null) {
       final int i = x + this.parent.x + 13;
       final int j = x + this.parent.x + 26 + 4;
@@ -312,18 +264,18 @@ public class AdvancementReloadedWidget {
       final int m = y + this.y + 13;
       final int n = border ? -16777216 : -1;
       if (border) {
-        context.horizontalLine(j, i, k - 1, n);
-        context.horizontalLine(j + 1, i, k, n);
-        context.horizontalLine(j, i, k + 1, n);
-        context.horizontalLine(l, j - 1, m - 1, n);
-        context.horizontalLine(l, j - 1, m, n);
-        context.horizontalLine(l, j - 1, m + 1, n);
-        context.verticalLine(j - 1, m, k, n);
-        context.verticalLine(j + 1, m, k, n);
+        context.hLine(j, i, k - 1, n);
+        context.hLine(j + 1, i, k, n);
+        context.hLine(j, i, k + 1, n);
+        context.hLine(l, j - 1, m - 1, n);
+        context.hLine(l, j - 1, m, n);
+        context.hLine(l, j - 1, m + 1, n);
+        context.vLine(j - 1, m, k, n);
+        context.vLine(j + 1, m, k, n);
       } else {
-        context.horizontalLine(j, i, k, n);
-        context.horizontalLine(l, j, m, n);
-        context.verticalLine(j, m, k, n);
+        context.hLine(j, i, k, n);
+        context.hLine(l, j, m, n);
+        context.vLine(j, m, k, n);
       }
     }
     for (final AdvancementReloadedWidget advancementWidget : this.children)
@@ -339,30 +291,19 @@ public class AdvancementReloadedWidget {
    * @param x       the x-coordinate of the widget
    * @param y       the y-coordinate of the widget
    */
-  public void renderWidgets(final GuiGraphicsExtractor context, final int x, final int y) {
+  public void renderWidgets(final GuiGraphics context, final int x, final int y) {
     if (!this.display.isHidden() || (this.progress != null && this.progress.isDone())) {
-      final ReloadedWidgetType widgetType;
-      final float currentProgress = (this.progress == null) ? 0.0F : this.progress.getPercent();
-      if (currentProgress >= 1.0F) {
-        widgetType = ReloadedWidgetType.OBTAINED;
+      final AdvancementWidgetType advancementObtainedStatus;
+      final float f = (this.progress == null) ? 0.0F : this.progress.getPercent();
+      if (f >= 1.0F) {
+        advancementObtainedStatus = AdvancementWidgetType.OBTAINED;
       } else {
-        widgetType = ReloadedWidgetType.UNOBTAINED;
+        advancementObtainedStatus = AdvancementWidgetType.UNOBTAINED;
       }
-
-      final boolean isDimmed = !this.isSearchQueryMatched();
-      final Identifier backgroundResource = widgetType.frameSprite(this.display.getType(), isDimmed);
-
-      context.blitSprite(this.renderTypeGui, backgroundResource, x + this.x + 3, y + this.y, 26, 26);
-
-      context.fakeItem(this.display.getIcon().create(), x + this.x + 8, y + this.y + 5);
-
-      if (isDimmed) {
-        // Force the dimmed sprite to be rendered with a lower alpha
-        final Identifier dimmedResource = widgetType.frameSprite(this.display.getType(), true);
-        context.blitSprite(this.renderTypeGui, dimmedResource, x + this.x + 3, y + this.y, 26, 26, 0.6f);
-      }
+      context.blitSprite(advancementObtainedStatus.frameSprite(this.display.getType()), x + this.x + 3,
+          y + this.y, 26, 26);
+      context.renderFakeItem(this.display.getIcon(), x + this.x + 8, y + this.y + 5);
     }
-
     for (final AdvancementReloadedWidget advancementWidget : this.children)
       advancementWidget.renderWidgets(context, x, y);
   }
@@ -459,11 +400,11 @@ public class AdvancementReloadedWidget {
    * @param x       the x-coordinate of the mouse
    * @param y       the y-coordinate of the mouse
    */
-  public void drawTooltip(final GuiGraphicsExtractor context, final int originX, final int originY, final float alpha,
+  public void drawTooltip(final GuiGraphics context, final int originX, final int originY, final float alpha,
       final int x, final int y) {
-    final ReloadedWidgetType advancementObtainedStatus;
-    final ReloadedWidgetType advancementObtainedStatus2;
-    final ReloadedWidgetType advancementObtainedStatus3;
+    final AdvancementWidgetType advancementObtainedStatus;
+    final AdvancementWidgetType advancementObtainedStatus2;
+    final AdvancementWidgetType advancementObtainedStatus3;
     final int m;
     final boolean bl = (x + originX + this.x + this.width + 26 >= (this.tab.getScreen()).width);
     final Component text = (this.progress == null) ? null : this.progress.getProgressText();
@@ -474,25 +415,26 @@ public class AdvancementReloadedWidget {
     int j = Mth.floor(f * this.width);
     if (f >= 1.0F) {
       j = this.width / 2;
-      advancementObtainedStatus = ReloadedWidgetType.OBTAINED;
-      advancementObtainedStatus2 = ReloadedWidgetType.OBTAINED;
-      advancementObtainedStatus3 = ReloadedWidgetType.OBTAINED;
+      advancementObtainedStatus = AdvancementWidgetType.OBTAINED;
+      advancementObtainedStatus2 = AdvancementWidgetType.OBTAINED;
+      advancementObtainedStatus3 = AdvancementWidgetType.OBTAINED;
     } else if (j < 2) {
       j = this.width / 2;
-      advancementObtainedStatus = ReloadedWidgetType.UNOBTAINED;
-      advancementObtainedStatus2 = ReloadedWidgetType.UNOBTAINED;
-      advancementObtainedStatus3 = ReloadedWidgetType.UNOBTAINED;
+      advancementObtainedStatus = AdvancementWidgetType.UNOBTAINED;
+      advancementObtainedStatus2 = AdvancementWidgetType.UNOBTAINED;
+      advancementObtainedStatus3 = AdvancementWidgetType.UNOBTAINED;
     } else if (j > this.width - 2) {
       j = this.width / 2;
-      advancementObtainedStatus = ReloadedWidgetType.OBTAINED;
-      advancementObtainedStatus2 = ReloadedWidgetType.OBTAINED;
-      advancementObtainedStatus3 = ReloadedWidgetType.UNOBTAINED;
+      advancementObtainedStatus = AdvancementWidgetType.OBTAINED;
+      advancementObtainedStatus2 = AdvancementWidgetType.OBTAINED;
+      advancementObtainedStatus3 = AdvancementWidgetType.UNOBTAINED;
     } else {
-      advancementObtainedStatus = ReloadedWidgetType.OBTAINED;
-      advancementObtainedStatus2 = ReloadedWidgetType.UNOBTAINED;
-      advancementObtainedStatus3 = ReloadedWidgetType.UNOBTAINED;
+      advancementObtainedStatus = AdvancementWidgetType.OBTAINED;
+      advancementObtainedStatus2 = AdvancementWidgetType.UNOBTAINED;
+      advancementObtainedStatus3 = AdvancementWidgetType.UNOBTAINED;
     }
     final int k = this.width - j;
+    RenderSystem.enableBlend();
     final int l = originY + this.y;
     if (bl) {
       m = originX + this.x - this.width + 26 + 6;
@@ -503,44 +445,38 @@ public class AdvancementReloadedWidget {
     final int n = 32 + this.description.size() * 9;
     if (!this.description.isEmpty())
       if (bl2) {
-        context.blitSprite(this.renderTypeGui, TITLE_BOX_TEXTURE, m, l + 26 - n, this.width, n);
+        context.blitSprite(TITLE_BOX_TEXTURE, m, l + 26 - n, this.width, n);
       } else {
-        context.blitSprite(this.renderTypeGui, TITLE_BOX_TEXTURE, m, l, this.width, n);
+        context.blitSprite(TITLE_BOX_TEXTURE, m, l, this.width, n);
       }
-
-    final boolean isDimmed = !this.isSearchQueryMatched();
-    context.blitSprite(this.renderTypeGui, advancementObtainedStatus.boxSprite(isDimmed), 200, 26, 0, 0, m, l, j,
-        26);
-    context.blitSprite(this.renderTypeGui, advancementObtainedStatus2.boxSprite(isDimmed), 200, 26, 200 - k, 0,
-        m + j, l, k,
-        26);
-    context.blitSprite(this.renderTypeGui, advancementObtainedStatus3.frameSprite(this.display.getType(), isDimmed),
-        originX + this.x + 3,
+    context.blitSprite(advancementObtainedStatus.boxSprite(), 200, 26, 0, 0, m, l, j, 26);
+    context.blitSprite(advancementObtainedStatus2.boxSprite(), 200, 26, 200 - k, 0, m + j, l, k, 26);
+    context.blitSprite(advancementObtainedStatus3.frameSprite(this.display.getType()), originX + this.x + 3,
         originY + this.y, 26, 26);
     if (bl) {
-      context.text(this.client.font, this.title, m + 5, originY + this.y + 9, -1);
+      context.drawString(this.client.font, this.title, m + 5, originY + this.y + 9, -1);
       if (text != null)
-        context.text(this.client.font, text, originX + this.x - i, originY + this.y + 9, -1);
+        context.drawString(this.client.font, text, originX + this.x - i, originY + this.y + 9, -1);
     } else {
-      context.text(this.client.font, this.title, originX + this.x + 32, originY + this.y + 9, -1);
+      context.drawString(this.client.font, this.title, originX + this.x + 32, originY + this.y + 9, -1);
       if (text != null)
-        context.text(this.client.font, text, originX + this.x + this.width - i - 5,
+        context.drawString(this.client.font, text, originX + this.x + this.width - i - 5,
             originY + this.y + 9, -1);
     }
     if (bl2) {
       for (int o = 0; o < this.description.size(); o++) {
         Objects.requireNonNull(this.client.font);
-        context.text(this.client.font, this.description.get(o), m + 5, l + 26 - n + 7 + o * 9, -5592406,
+        context.drawString(this.client.font, this.description.get(o), m + 5, l + 26 - n + 7 + o * 9, -5592406,
             false);
       }
     } else {
       for (int o = 0; o < this.description.size(); o++) {
         Objects.requireNonNull(this.client.font);
-        context.text(this.client.font, this.description.get(o), m + 5, originY + this.y + 9 + 17 + o * 9,
+        context.drawString(this.client.font, this.description.get(o), m + 5, originY + this.y + 9 + 17 + o * 9,
             -5592406, false);
       }
     }
-    context.fakeItem(this.display.getIcon().create(), originX + this.x + 8, originY + this.y + 5);
+    context.renderFakeItem(this.display.getIcon(), originX + this.x + 8, originY + this.y + 5);
   }
 
   /**

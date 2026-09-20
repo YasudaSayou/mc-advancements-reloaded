@@ -5,12 +5,11 @@ import codes.atomys.advr.utils.Utils;
 import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.stream.Collectors;
-import net.minecraft.IdentifierException;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.CommonColors;
 
 /**
@@ -22,10 +21,9 @@ import net.minecraft.util.CommonColors;
 public class ReloadedCriterionProgress {
   private final AdvancementNode advancementNode;
   private final AdvancementProgress progress;
-  private Identifier criterion;
+  private final ResourceLocation criterion;
 
   private boolean obtained;
-  private List<String> alreadyWarnedTranslations = Lists.newArrayList();
 
   /**
    * Represents the progress of a specific criterion within an advancement.
@@ -39,7 +37,7 @@ public class ReloadedCriterionProgress {
       final String criterionName) {
     this.advancementNode = advancementNode;
     this.progress = progress;
-    this.criterion = sanitizeResourceLocationString(criterionName);
+    this.criterion = ResourceLocation.parse(criterionName);
 
     this.obtained = progress.getCriterion(criterionName).isDone();
   }
@@ -67,7 +65,7 @@ public class ReloadedCriterionProgress {
    *
    * @return the resource location of the advancement this criterion belongs to
    */
-  public Identifier getResourceLocation() {
+  public ResourceLocation getResourceLocation() {
     return this.advancementNode.holder().id();
   }
 
@@ -170,7 +168,7 @@ public class ReloadedCriterionProgress {
    */
   private String getAdvancementIdentifier() {
 
-    final Identifier locationId = this.getResourceLocation();
+    final ResourceLocation locationId = this.getResourceLocation();
     final String path = locationId.getPath();
 
     final String[] pathSegments = path.split("/");
@@ -191,7 +189,7 @@ public class ReloadedCriterionProgress {
    * @return the category of the advancement
    */
   private String getAdvancementCategory() {
-    final Identifier locationId = this.getAdvancementNode().root().holder().id();
+    final ResourceLocation locationId = this.getAdvancementNode().root().holder().id();
     final String path = locationId.getPath();
 
     if (!path.contains("/")) {
@@ -235,54 +233,9 @@ public class ReloadedCriterionProgress {
       }
     }
 
-    // If no translation was found, log a warning and return the original
-    // criterion name.
-    if (this.alreadyWarnedTranslations.contains(criteria)) {
-      return Component.literal(criteria);
-    }
-
-    // Log a warning if the translation was not found on the first try.
     Utils.LOGGER.warn(
         "Unable to translate {} to a more meaningful name, adding as is, performance may be degraded. You can add your own translation for this criterion by adding the translation key: `{}`.",
         criteria, this.getTranslationKey());
-    this.alreadyWarnedTranslations.add(criteria);
-
-    // Return the original criterion name if no translation was found
     return Component.literal(criteria);
-  }
-
-  /**
-   * Safely creates a ResourceLocation from the given string.
-   * <p>
-   * Attempts to parse the provided string into a valid ResourceLocation. If
-   * the parsing fails due to invalid characters, an error is logged, and the
-   * string is sanitized by replacing invalid characters with underscores.
-   * A "ghost" ResourceLocation is then created with the sanitized string using
-   * the "minecraft" namespace.
-   * </p>
-   *
-   * @param str the string to parse into a ResourceLocation
-   * @return a valid ResourceLocation object
-   */
-  private static Identifier sanitizeResourceLocationString(String str) {
-    str = str.toLowerCase(); // Force lowercase
-
-    try {
-      return Identifier.parse(str);
-    } catch (final IdentifierException e) {
-      Utils.LOGGER.error("Failed to parse criterion name: {}, trying to initial a ghost criterion", str);
-
-      for (int i = 0; i < str.length(); i++) {
-        if (!Identifier.validPathChar(str.charAt(i))) {
-          // Replace invalid char by an underscore
-          str = str.substring(0, i) + "_" + str.substring(i + 1);
-        }
-      }
-
-      Utils.LOGGER.warn(
-          "Criterion name sanitized to: minecraft:{}. If you are the developer, please follow the minecraft naming convention (Non [a-z0-9/._-] character in path of location).",
-          str);
-      return Identifier.fromNamespaceAndPath("minecraft", str);
-    }
   }
 }
